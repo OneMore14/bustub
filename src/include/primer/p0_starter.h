@@ -153,8 +153,8 @@ class RowMatrix : public Matrix<T> {
    * @throws OUT_OF_RANGE if either index is out of range
    */
   T GetElement(int i, int j) const override {
-    if (i < 0 || j < 0 || i >= this->GetRowCount() || j >= this->GetColumnCount() || this->GetRowCount() <= 0
-        || this->GetColumnCount() <= 0) {
+    if (i < 0 || j < 0 || i >= this->GetRowCount() || j >= this->GetColumnCount() || this->GetRowCount() <= 0 ||
+        this->GetColumnCount() <= 0) {
       throw Exception(ExceptionType::OUT_OF_RANGE, Exception::ExceptionTypeToString(ExceptionType::OUT_OF_RANGE));
     }
     return this->data_[i][j];
@@ -171,8 +171,8 @@ class RowMatrix : public Matrix<T> {
    * @throws OUT_OF_RANGE if either index is out of range
    */
   void SetElement(int i, int j, T val) override {
-    if (i < 0 || j < 0 || i >= this->GetRowCount() || j >= this->GetColumnCount()
-        || this->GetRowCount() <= 0 || this->GetColumnCount() <= 0) {
+    if (i < 0 || j < 0 || i >= this->GetRowCount() || j >= this->GetColumnCount() || this->GetRowCount() <= 0 ||
+        this->GetColumnCount() <= 0) {
       throw Exception(ExceptionType::OUT_OF_RANGE, Exception::ExceptionTypeToString(ExceptionType::OUT_OF_RANGE));
     }
     this->data_[i][j] = val;
@@ -190,8 +190,8 @@ class RowMatrix : public Matrix<T> {
    * @throws OUT_OF_RANGE if `source` is incorrect size
    */
   void FillFrom(const std::vector<T> &source) override {
-    if (static_cast<int>(source.size()) != this->rows_ * this->cols_
-        || this->GetRowCount() <= 0 || this->GetColumnCount() <= 0) {
+    if (static_cast<int>(source.size()) != this->rows_ * this->cols_ || this->GetRowCount() <= 0 ||
+        this->GetColumnCount() <= 0) {
       throw Exception(ExceptionType::OUT_OF_RANGE, Exception::ExceptionTypeToString(ExceptionType::OUT_OF_RANGE));
     }
     for (int i = 0; i < this->rows_; i++) {
