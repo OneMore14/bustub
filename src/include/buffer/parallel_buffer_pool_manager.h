@@ -16,6 +16,7 @@
 #include "recovery/log_manager.h"
 #include "storage/disk/disk_manager.h"
 #include "storage/page/page.h"
+#include "buffer_pool_manager_instance.h"
 
 namespace bustub {
 
@@ -86,5 +87,12 @@ class ParallelBufferPoolManager : public BufferPoolManager {
    * Flushes all the pages in the buffer pool to disk.
    */
   void FlushAllPgsImp() override;
+
+ private:
+  std::vector<BufferPoolManagerInstance*> manager_instance_{};
+  size_t pool_size_;
+  size_t num_instances_;
+  size_t index_ = 0;
+  std::mutex latch_{};
 };
 }  // namespace bustub
