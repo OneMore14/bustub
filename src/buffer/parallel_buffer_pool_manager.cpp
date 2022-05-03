@@ -17,11 +17,11 @@ namespace bustub {
 ParallelBufferPoolManager::ParallelBufferPoolManager(size_t num_instances, size_t pool_size, DiskManager *disk_manager,
                                                      LogManager *log_manager) {
   // Allocate and create individual BufferPoolManagerInstances
-    for (size_t i = 0; i < num_instances; i++) {
-      manager_instance_.push_back(new BufferPoolManagerInstance(pool_size, disk_manager, log_manager));
-    }
-    num_instances_ = num_instances;
-    pool_size_ = pool_size;
+  for (size_t i = 0; i < num_instances; i++) {
+    manager_instance_.push_back(new BufferPoolManagerInstance(pool_size, disk_manager, log_manager));
+  }
+  num_instances_ = num_instances;
+  pool_size_ = pool_size;
 }
 
 // Update constructor to destruct all BufferPoolManagerInstances and deallocate any associated memory

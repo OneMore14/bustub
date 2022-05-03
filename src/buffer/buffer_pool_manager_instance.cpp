@@ -139,7 +139,6 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
   }
   page_table_.erase(pages_[frame_id].GetPageId());
 
-
   pages_[frame_id].page_id_ = page_id;
   pages_[frame_id].is_dirty_ = false;
   pages_[frame_id].pin_count_ = 1;
