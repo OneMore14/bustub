@@ -13,12 +13,87 @@
 #pragma once
 
 #include <memory>
+#include <unordered_set>
 #include <utility>
+#include <vector>
 
+#include "common/util/hash_util.h"
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/distinct_plan.h"
 
 namespace bustub {
+
+struct DistinctKey {
+  std::vector<Value> columns_;
+
+  bool operator==(const DistinctKey &other) const {
+    for (uint32_t i = 0; i < other.columns_.size(); i++) {
+      if (columns_[i].CompareEquals(other.columns_[i]) != CmpBool::CmpTrue) {
+        return false;
+      }
+    }
+    return true;
+  }
+};
+
+}  // namespace bustub
+
+namespace std {
+
+template <>
+struct hash<bustub::DistinctKey> {
+  std::size_t operator()(const bustub::DistinctKey &key) const {
+    size_t curr_hash = 0;
+    for (const auto &column_key : key.columns_) {
+      if (!column_key.IsNull()) {
+        curr_hash = bustub::HashUtil::CombineHashes(curr_hash, bustub::HashUtil::HashValue(&column_key));
+      }
+    }
+    return curr_hash;
+  }
+};
+}  // namespace std
+
+namespace bustub {
+
+class SimpleDistinctSet {
+ public:
+  void Insert(const DistinctKey &key) { set_.insert(key); }
+
+  void Clear() { set_.clear(); }
+
+  size_t Size() { return set_.size(); }
+
+  class Iterator {
+   public:
+    explicit Iterator(std::unordered_set<DistinctKey>::const_iterator iter) : iter_{iter} {}
+
+    /** @return The key of the iterator */
+    const DistinctKey &Key() { return *iter_; }
+
+    /** @return The iterator before it is incremented */
+    Iterator &operator++() {
+      ++iter_;
+      return *this;
+    }
+
+    /** @return `true` if both iterators are identical */
+    bool operator==(const Iterator &other) { return this->iter_ == other.iter_; }
+
+    /** @return `true` if both iterators are different */
+    bool operator!=(const Iterator &other) { return this->iter_ != other.iter_; }
+
+   private:
+    std::unordered_set<DistinctKey>::const_iterator iter_;
+  };
+
+  Iterator Begin() { return Iterator{set_.cbegin()}; }
+
+  Iterator End() { return Iterator{set_.cend()}; }
+
+ private:
+  std::unordered_set<DistinctKey> set_{};
+};
 
 /**
  * DistinctExecutor removes duplicate rows from child ouput.
@@ -53,5 +128,9 @@ class DistinctExecutor : public AbstractExecutor {
   const DistinctPlanNode *plan_;
   /** The child executor from which tuples are obtained */
   std::unique_ptr<AbstractExecutor> child_executor_;
+  bool end_{false};
+  SimpleDistinctSet distinct_set_{};
+
+  SimpleDistinctSet::Iterator iter_;
 };
 }  // namespace bustub

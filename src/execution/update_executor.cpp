@@ -17,11 +17,44 @@ namespace bustub {
 
 UpdateExecutor::UpdateExecutor(ExecutorContext *exec_ctx, const UpdatePlanNode *plan,
                                std::unique_ptr<AbstractExecutor> &&child_executor)
-    : AbstractExecutor(exec_ctx) {}
+    : AbstractExecutor(exec_ctx) {
+  plan_ = plan;
+  table_info_ = exec_ctx->GetCatalog()->GetTable(plan->TableOid());
+  child_executor_ = std::move(child_executor);
+}
 
-void UpdateExecutor::Init() {}
+void UpdateExecutor::Init() {
+  child_executor_->Init();
+  end_ = false;
+}
 
-bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) { return false; }
+bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
+  if (end_) {
+    return false;
+  }
+  Tuple source_tuple;
+  RID source_rid;
+  if (!child_executor_->Next(&source_tuple, &source_rid)) {
+    end_ = true;
+    return false;
+  }
+  Tuple updated_tuple = GenerateUpdatedTuple(source_tuple);
+  if (!table_info_->table_->UpdateTuple(updated_tuple, source_rid, exec_ctx_->GetTransaction()) &&
+      exec_ctx_->GetTransaction()->GetState() != TransactionState::ABORTED) {
+    if (table_info_->table_->MarkDelete(source_rid, exec_ctx_->GetTransaction())) {
+      // table_info_->table_->ApplyDelete(source_rid, exec_ctx_->GetTransaction());
+    }
+    table_info_->table_->InsertTuple(updated_tuple, &source_rid, exec_ctx_->GetTransaction());
+  }
+  for (auto &index_info : exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_)) {
+    auto key =
+        source_tuple.KeyFromTuple(table_info_->schema_, index_info->key_schema_, index_info->index_->GetKeyAttrs());
+    index_info->index_->DeleteEntry(key, source_rid, exec_ctx_->GetTransaction());
+    key = updated_tuple.KeyFromTuple(table_info_->schema_, index_info->key_schema_, index_info->index_->GetKeyAttrs());
+    index_info->index_->InsertEntry(key, source_rid, exec_ctx_->GetTransaction());
+  }
+  return true;
+}
 
 Tuple UpdateExecutor::GenerateUpdatedTuple(const Tuple &src_tuple) {
   const auto &update_attrs = plan_->GetUpdateAttr();

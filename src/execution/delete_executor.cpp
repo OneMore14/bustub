@@ -18,10 +18,38 @@ namespace bustub {
 
 DeleteExecutor::DeleteExecutor(ExecutorContext *exec_ctx, const DeletePlanNode *plan,
                                std::unique_ptr<AbstractExecutor> &&child_executor)
-    : AbstractExecutor(exec_ctx) {}
+    : AbstractExecutor(exec_ctx) {
+  plan_ = plan;
+  child_executor_ = std::move(child_executor);
+  table_info_ = exec_ctx->GetCatalog()->GetTable(plan->TableOid());
+}
 
-void DeleteExecutor::Init() {}
+void DeleteExecutor::Init() {
+  child_executor_->Init();
+  end_ = false;
+}
 
-bool DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) { return false; }
+bool DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
+  if (end_) {
+    return false;
+  }
+  Tuple delete_tuple;
+  RID delete_rid;
+  if (!child_executor_->Next(&delete_tuple, &delete_rid)) {
+    end_ = true;
+    return false;
+  }
+  if (table_info_->table_->MarkDelete(delete_rid, exec_ctx_->GetTransaction())) {
+    // table_info_->table_->ApplyDelete(delete_rid, exec_ctx_->GetTransaction());
+  }
+
+  for (auto &index_info : exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_)) {
+    auto key =
+        delete_tuple.KeyFromTuple(table_info_->schema_, index_info->key_schema_, index_info->index_->GetKeyAttrs());
+    index_info->index_->DeleteEntry(key, delete_rid, exec_ctx_->GetTransaction());
+  }
+
+  return true;
+}
 
 }  // namespace bustub

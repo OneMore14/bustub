@@ -60,15 +60,19 @@ class ExecutionEngine {
       Tuple tuple;
       RID rid;
       while (executor->Next(&tuple, &rid)) {
-        if (result_set != nullptr) {
+        if (result_set != nullptr && ShouldModifyResultSet(plan->GetType())) {
           result_set->push_back(tuple);
         }
       }
     } catch (Exception &e) {
       // TODO(student): handle exceptions
+      return false;
     }
 
     return true;
+  }
+  bool ShouldModifyResultSet(PlanType plan) {
+    return plan != PlanType::Insert && plan != PlanType::Update && plan != PlanType::Delete;
   }
 
  private:
