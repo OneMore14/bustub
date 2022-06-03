@@ -48,6 +48,8 @@ bool InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
       auto key =
           new_tuple.KeyFromTuple(table_info_->schema_, index_info->key_schema_, index_info->index_->GetKeyAttrs());
       index_info->index_->InsertEntry(key, new_rid, exec_ctx_->GetTransaction());
+      exec_ctx_->GetTransaction()->GetIndexWriteSet()->push_back(IndexWriteRecord(
+          new_rid, table_info_->oid_, WType::INSERT, new_tuple, index_info->index_oid_, exec_ctx_->GetCatalog()));
     }
     raw_index_++;
     if (raw_index_ == raw_value_size_) {

@@ -55,5 +55,6 @@ class SeqScanExecutor : public AbstractExecutor {
   page_id_t first_page_id_;
   RID cur_rid_;
   bool end_;
+  Transaction *transaction_;
 };
 }  // namespace bustub

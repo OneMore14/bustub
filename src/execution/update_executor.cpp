@@ -38,6 +38,11 @@ bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
     end_ = true;
     return false;
   }
+  if (exec_ctx_->GetTransaction()->IsSharedLocked(source_rid)) {
+    exec_ctx_->GetLockManager()->LockUpgrade(exec_ctx_->GetTransaction(), source_rid);
+  } else if (!exec_ctx_->GetTransaction()->IsExclusiveLocked(source_rid)) {
+    exec_ctx_->GetLockManager()->LockExclusive(exec_ctx_->GetTransaction(), source_rid);
+  }
   Tuple updated_tuple = GenerateUpdatedTuple(source_tuple);
   if (!table_info_->table_->UpdateTuple(updated_tuple, source_rid, exec_ctx_->GetTransaction()) &&
       exec_ctx_->GetTransaction()->GetState() != TransactionState::ABORTED) {
@@ -52,6 +57,10 @@ bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
     index_info->index_->DeleteEntry(key, source_rid, exec_ctx_->GetTransaction());
     key = updated_tuple.KeyFromTuple(table_info_->schema_, index_info->key_schema_, index_info->index_->GetKeyAttrs());
     index_info->index_->InsertEntry(key, source_rid, exec_ctx_->GetTransaction());
+    auto index_write_record = IndexWriteRecord(source_rid, table_info_->oid_, WType::UPDATE, updated_tuple,
+                                               index_info->index_oid_, exec_ctx_->GetCatalog());
+    index_write_record.old_tuple_ = source_tuple;
+    exec_ctx_->GetTransaction()->GetIndexWriteSet()->push_back(index_write_record);
   }
   return true;
 }

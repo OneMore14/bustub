@@ -19,6 +19,7 @@ SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNod
   bpm_ = exec_ctx->GetBufferPoolManager();
   table_info_ = exec_ctx->GetCatalog()->GetTable(plan_->GetTableOid());
   first_page_id_ = table_info_->table_->GetFirstPageId();
+  transaction_ = exec_ctx->GetTransaction();
 }
 
 void SeqScanExecutor::Init() {
@@ -30,7 +31,13 @@ void SeqScanExecutor::Init() {
 bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
   Tuple new_tuple;
   while (!end_) {
+    if (transaction_->GetIsolationLevel() != IsolationLevel::READ_UNCOMMITTED) {
+      exec_ctx_->GetLockManager()->LockShared(transaction_, cur_rid_);
+    }
     if (!table_info_->table_->GetTuple(cur_rid_, &new_tuple, exec_ctx_->GetTransaction())) {
+      if (transaction_->GetIsolationLevel() == IsolationLevel::READ_COMMITTED) {
+        exec_ctx_->GetLockManager()->Unlock(transaction_, cur_rid_);
+      }
       return false;
     }
 
@@ -54,6 +61,7 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
         bpm_->UnpinPage(next_page_id, false);
       }
     }
+    auto temp_cur_rid = cur_rid_;
     cur_rid_.Set(next_rid.GetPageId(), next_rid.GetSlotNum());
     bpm_->UnpinPage(origin_page_id, false);
 
@@ -68,6 +76,9 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
 
       *tuple = new_tuple;
 
+      if (transaction_->GetIsolationLevel() == IsolationLevel::READ_COMMITTED) {
+        exec_ctx_->GetLockManager()->Unlock(transaction_, temp_cur_rid);
+      }
       return true;
     }
   }
